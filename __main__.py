@@ -2,6 +2,21 @@ from bs4 import BeautifulSoup
 import requests
 import re
 from time import sleep
+from urllib.parse import urlparse
+
+def url_to_filename(url):
+    # Parse the URL
+    parsed_url = urlparse(url)
+    # Extract the domain name and path
+    netloc = parsed_url.netloc
+    path = parsed_url.path
+    # Replace slashes with underscores and remove unsafe characters
+    safe_path = re.sub(r'[^a-zA-Z0-9\-_\.]', '', path.replace('/', '_'))
+    # Concatenate and ensure the filename is not too long
+    filename = f"{netloc}_{safe_path}".strip("_")
+    # Limit filename length to 255 characters (common maximum for filesystems)
+    filename = (filename[:252] + '...') if len(filename) > 255 else filename
+    return filename + ".txt"
 
 def main(substrings: list) -> None: 
     
@@ -31,15 +46,22 @@ def main(substrings: list) -> None:
         # Parse using HTML
         soup = BeautifulSoup(page.content, "html.parser") 
 
+        with open(f"Content{url_to_filename(sub_url)}.md", "a") as content_file:    
+            # Check and write the <title> tag content if present
+            title_tag = soup.find('title')
+            if title_tag:
+                content_file.write(f"# {title_tag.get_text(strip=True)}\n\n")
 
-        # Go through all text content on page (p, h1, h2, etc) using .strings instance variable
-        for p_tag in soup.stripped_strings:
-        
-            #Open txt file in append mode. Will not truncate contents if file with that name is created. If not created, will create new file.
-            with open ("optimization_content.txt", "a") as content_file:
-                
-                #File is automatically closed once done
-                content_file.write(p_tag)
+            for element in soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+                # Determine the tag name
+                tag_name = element.name
+                text_content = element.get_text(strip=True)
+
+                # Check if the element is a header and prefix accordingly
+                if tag_name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                    content_file.write(f"## {text_content}\n\n")
+                else:  # For paragraphs and other text, write as regular text
+                    content_file.write(f"{text_content}\n\n")
 
         #Wait a bit before it requests the next URL in the loop
         sleep(3)
