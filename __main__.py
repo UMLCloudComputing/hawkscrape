@@ -3,6 +3,7 @@ import requests
 import re
 from time import sleep
 from urllib.parse import urlparse
+import json
 
 def url_to_filename(url):
     # Parse the URL
@@ -51,7 +52,7 @@ def main(substrings: list) -> None:
             footer.decompose()
 
 
-        with open(f"Content{url_to_filename(sub_url)}.md", "a") as content_file:    
+        with open(f"{url_to_filename(sub_url)}.md", "a") as content_file:    
             # Check and write the <title> tag content if present
             title_tag = soup.find('title')
             if title_tag:
@@ -92,6 +93,18 @@ def main(substrings: list) -> None:
 
         #Wait a bit before it requests the next URL in the loop
         sleep(3)
+
+        filename_base = url_to_filename(sub_url)
+        metadata_filename = f"{filename_base}.metadata.json"
+
+        # Metadata dictionary
+        metadata = {
+            "metadataAttributes": {
+                "url": sub_url
+            }
+        }
+        with open(metadata_filename, "w", encoding='utf-8') as metadata_file:
+            json.dump(metadata, metadata_file, indent=4) 
 
 if __name__ == "__main__":
     main(["https://www.uml.edu/academics/colleges.aspx", "/student-life", "/admissions-aid", "/thesolutioncenter/bill"])
