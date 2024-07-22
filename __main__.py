@@ -50,6 +50,29 @@ def main(substrings: list) -> None:
         footer = soup.find("footer", class_="layout-footer")
         if footer:
             footer.decompose()
+        
+        for nav_element in soup.find_all(class_='l-page__nav'):
+            nav_element.decompose()
+        
+        header_inside = soup.find("div", class_="layout-header__inside")
+        if header_inside:
+            header_inside.decompose()
+
+        header_inside = soup.find("div", class_="layout-header__nav")
+        if header_inside:
+            header_inside.decompose()
+        
+        header_inside = soup.find("div", class_="layout-header__quick-links")
+        if header_inside:
+            header_inside.decompose()
+
+        header_inside = soup.find("div", class_="l-supplemental-content")
+        if header_inside:
+            header_inside.decompose()
+
+        
+        
+        
 
 
         with open(f"{url_to_filename(sub_url)}.md", "a") as content_file:    
@@ -107,5 +130,5 @@ def main(substrings: list) -> None:
             json.dump(metadata, metadata_file, indent=4) 
 
 if __name__ == "__main__":
-    main(["https://www.uml.edu/academics/colleges.aspx", "/student-life", "/admissions-aid", "/thesolutioncenter/bill"])
+    main(["/thesolutioncenter/bill"])
 
