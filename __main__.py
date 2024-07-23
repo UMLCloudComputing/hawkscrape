@@ -127,6 +127,16 @@ def main(substrings: list) -> None:
         # Wait a bit before it requests the next URL in the loop
         sleep(3)
 
+def ingest_data(knowledge_base):
+    client = boto3.client('bedrock-agent', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY)
+    data_src_list = client.list_data_sources(knowledgeBaseId=knowledge_base, maxResults=123)['dataSourceSummaries']
+    id = data_src_list[0]['dataSourceId']
+    response = client.start_ingestion_job(
+        dataSourceId=id,
+        knowledgeBaseId=knowledge_base
+    )
+
 if __name__ == "__main__":
     main(["/thesolutioncenter/bill"])
+    ingest_data(os.getenv("KB_ID"))
 
