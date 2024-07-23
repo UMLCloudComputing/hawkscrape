@@ -1,1 +1,4 @@
 /optimization_content.txt
+*.md
+!README.md
+*.metadata.json
