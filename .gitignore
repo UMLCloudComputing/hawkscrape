@@ -2,3 +2,5 @@
 *.md
 !README.md
 *.metadata.json
+*.env
+__pycache__
