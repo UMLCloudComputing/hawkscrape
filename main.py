@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import requests
 import re
+from extract import extract
 from time import sleep
 from urllib.parse import urlparse
 import json
@@ -54,51 +55,7 @@ def main(substrings: list) -> None:
         # Parse using HTML
         soup = BeautifulSoup(page.content, "html.parser") 
 
-        # Remove Headers, Footers, and Sidebars
-        footer = soup.find("footer", class_="layout-footer")
-        if footer:
-            footer.decompose()
-        
-        for nav_element in soup.find_all(class_='l-page__nav'):
-            nav_element.decompose()
-        
-        header_inside = soup.find("div", class_="layout-header__inside")
-        if header_inside:
-            header_inside.decompose()
-
-        header_inside = soup.find("div", class_="layout-header__nav")
-        if header_inside:
-            header_inside.decompose()
-        
-        header_inside = soup.find("div", class_="layout-header__quick-links")
-        if header_inside:
-            header_inside.decompose()
-
-        header_inside = soup.find("div", class_="l-supplemental-content")
-        if header_inside:
-            header_inside.decompose()
-
-
-        parsed_text = ""
-        
-        title_tag = soup.find('title')
-        if title_tag:
-            parsed_text += f"# {title_tag.get_text(strip=True)}\n\n"
-
-        for element in soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul']):
-            # Determine the tag name
-            tag_name = element.name
-            text_content = element.get_text(strip=True)
-
-            # Check if the element is a header and prefix accordingly
-            if tag_name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
-                parsed_text += f"## {text_content}\n\n"
-            elif tag_name == 'ul':
-                markdown_list = [f"- {li.text.strip()}" for li in element.find_all('li')]
-                markdown_output = "\n".join(markdown_list)
-                parsed_text += f"{markdown_output}\n\n"
-            else:  # For paragraphs and other text, write as regular text
-                parsed_text += f"{text_content}\n\n"
+        parsed_text = extract(soup)
 
         filename_base = url_to_filename(sub_url) + ".md"
         metadata_filename = f"{filename_base}.metadata.json"
@@ -137,6 +94,6 @@ def ingest_data(knowledge_base):
     )
 
 if __name__ == "__main__":
-    main(["/thesolutioncenter/bill"])
+    main(["/thesolutioncenter/bill/tuition-fees/undergraduate/undergraduate-ft-2024-2025.aspx"])
     ingest_data(os.getenv("KB_ID"))
 
