@@ -9,6 +9,7 @@ import os
 import boto3
 from io import BytesIO
 from s3 import *
+from tables import *
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -16,16 +17,11 @@ AWS_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 def url_to_filename(url):
-    # Parse the URL
     parsed_url = urlparse(url)
-    # Extract the domain name and path
     netloc = parsed_url.netloc
     path = parsed_url.path
-    # Replace slashes with underscores and remove unsafe characters
     safe_path = re.sub(r'[^a-zA-Z0-9\-_\.]', '', path.replace('/', '_'))
-    # Concatenate and ensure the filename is not too long
     filename = f"{netloc}_{safe_path}".strip("_")
-    # Limit filename length to 255 characters (common maximum for filesystems)
     filename = (filename[:252] + '...') if len(filename) > 255 else filename
     return filename
 
@@ -57,6 +53,8 @@ def main(substrings: list) -> None:
 
         parsed_text = extract(soup)
 
+        parsed_csv = getTable(sub_url)
+
         filename_base = url_to_filename(sub_url) + ".md"
         metadata_filename = f"{filename_base}.metadata.json"
 
@@ -80,7 +78,12 @@ def main(substrings: list) -> None:
 
         # Put metadata file into bucket
         s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
-        
+
+        for index, csv_content in enumerate(parsed_csv):
+            csv_filename = f"{url_to_filename(sub_url)}_{index}.csv"
+            s3.put_object(Bucket=bucket_name, Key=csv_filename, Body=BytesIO(csv_content.encode('utf-8')))
+            s3.put_object(Bucket=bucket_name, Key=f"{csv_filename}.metadata.json", Body=BytesIO(json_content))
+
         # Wait a bit before it requests the next URL in the loop
         sleep(3)
 
@@ -94,6 +97,6 @@ def ingest_data(knowledge_base):
     )
 
 if __name__ == "__main__":
-    main(["/thesolutioncenter/bill/tuition-fees/undergraduate/undergraduate-ft-2024-2025.aspx"])
+    main(["/thesolutioncenter/"])
     ingest_data(os.getenv("KB_ID"))
 
