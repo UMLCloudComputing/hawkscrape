@@ -1,15 +1,15 @@
 from bs4 import BeautifulSoup
 import requests
 import re
-from extract import extract
+from src.extract import extract
 from time import sleep
 from urllib.parse import urlparse
 import json
 import os
 import boto3
 from io import BytesIO
-from s3 import *
-from tables import *
+from src.s3 import *
+from src.tables import *
 from dotenv import load_dotenv
 load_dotenv()
 
