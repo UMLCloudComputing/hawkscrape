@@ -7,7 +7,7 @@ import json
 import os
 import boto3
 from io import BytesIO
-from s3 import *
+from .s3 import getS3Address
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -37,7 +37,7 @@ def extract(soup):
     if title_tag:
         parsed_text += f"# {title_tag.get_text(strip=True)}\n\n"
 
-    for element in soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul']):
+    for element in soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'table']):
         tag_name = element.name
         text_content = element.get_text(strip=True)
 
@@ -47,6 +47,8 @@ def extract(soup):
             markdown_list = [f"- {li.text.strip()}" for li in element.find_all('li')]
             markdown_output = "\n".join(markdown_list)
             parsed_text += f"{markdown_output}\n\n"
+        elif tag_name == 'table':
+            parsed_text += str(element) + "\n\n"
         else:
             parsed_text += f"{text_content}\n\n"
 
@@ -64,4 +66,4 @@ def test(url):
     print(parsed_text)
 
 if __name__ == "__main__":
-    test("https://www.uml.edu/about/")
+    test("https://www.uml.edu/student-services/reslife/housing/housing-food-rates.aspx")

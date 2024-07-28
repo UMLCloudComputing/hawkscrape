@@ -9,7 +9,7 @@ import os
 import boto3
 from io import BytesIO
 from src.s3 import *
-from src.tables import *
+# from src.tables import *
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -53,7 +53,7 @@ def main(substrings: list) -> None:
 
         parsed_text = extract(soup)
 
-        parsed_csv = getTable(sub_url)
+        # parsed_csv = getTable(sub_url)
 
         filename_base = url_to_filename(sub_url) + ".md"
         metadata_filename = f"{filename_base}.metadata.json"
@@ -79,13 +79,13 @@ def main(substrings: list) -> None:
         # Put metadata file into bucket
         s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
 
-        for index, csv_content in enumerate(parsed_csv):
-            csv_filename = f"{url_to_filename(sub_url)}_{index}.csv"
-            s3.put_object(Bucket=bucket_name, Key=csv_filename, Body=BytesIO(csv_content.encode('utf-8')))
-            s3.put_object(Bucket=bucket_name, Key=f"{csv_filename}.metadata.json", Body=BytesIO(json_content))
+        # for index, csv_content in enumerate(parsed_csv):
+        #     csv_filename = f"{url_to_filename(sub_url)}_{index}.csv"
+        #     s3.put_object(Bucket=bucket_name, Key=csv_filename, Body=BytesIO(csv_content.encode('utf-8')))
+        #     s3.put_object(Bucket=bucket_name, Key=f"{csv_filename}.metadata.json", Body=BytesIO(json_content))
 
         # Wait a bit before it requests the next URL in the loop
-        sleep(3)
+        sleep(1)
 
 def ingest_data(knowledge_base):
     client = boto3.client('bedrock-agent', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY)
