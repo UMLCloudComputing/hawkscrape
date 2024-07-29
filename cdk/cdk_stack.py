@@ -20,9 +20,10 @@ class CdkStack(Stack):
             environment= {
                 "AWS_ID": os.getenv('AWS_ACCESS_KEY_ID'),
                 "AWS_KEY": os.getenv('AWS_SECRET_ACCESS_KEY'),
+                "KB_ID": os.getenv('KB_ID'),
             },            
             code=_lambda.DockerImageCode.from_image_asset(
                 directory="src"
             ),
-            timeout=Duration.seconds(300)
+            timeout=Duration.seconds(900)
         )
