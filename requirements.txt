@@ -2,3 +2,5 @@ requests
 lxml
 bs4
 dotenv
+aws-cdk-lib==2.144.0
+constructs>=10.0.0,<11.0.0
