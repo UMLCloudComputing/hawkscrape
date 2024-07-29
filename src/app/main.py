@@ -1,20 +1,23 @@
 from bs4 import BeautifulSoup
 import requests
 import re
-from src.extract import extract
+from extract import extract
 from time import sleep
 from urllib.parse import urlparse
 import json
 import os
 import boto3
 from io import BytesIO
-from src.s3 import *
-# from src.tables import *
+from s3 import getS3Address
 from dotenv import load_dotenv
 load_dotenv()
 
 AWS_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+
+def handler(event, context):
+    main(["/thesolutioncenter/"])
+    ingest_data(os.getenv("KB_ID"))
 
 def url_to_filename(url):
     parsed_url = urlparse(url)

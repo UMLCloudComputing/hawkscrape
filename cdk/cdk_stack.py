@@ -1,19 +1,28 @@
 from aws_cdk import (
-    # Duration,
+    Duration,
     Stack,
-    # aws_sqs as sqs,
+    aws_lambda as _lambda,
 )
 from constructs import Construct
+from dotenv import load_dotenv
+load_dotenv()
+import os
 
 class CdkStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # The code that defines your stack goes here
-
-        # example resource
-        # queue = sqs.Queue(
-        #     self, "CdkQueue",
-        #     visibility_timeout=Duration.seconds(300),
-        # )
+        dockerFunc = _lambda.DockerImageFunction(
+            scope=self,
+            id=f"ID{construct_id}",
+            function_name=construct_id,
+            environment= {
+                "AWS_ID": os.getenv('AWS_ACCESS_KEY_ID'),
+                "AWS_KEY": os.getenv('AWS_SECRET_ACCESS_KEY'),
+            },            
+            code=_lambda.DockerImageCode.from_image_asset(
+                directory="src"
+            ),
+            timeout=Duration.seconds(300)
+        )
