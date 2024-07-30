@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - lambda
+  schedule:
+    - cron: '0 0 * * 0'  # This cron expression runs the job every Sunday at midnight UTC
 
 jobs:
   deploy:
