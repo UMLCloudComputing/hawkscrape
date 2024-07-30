@@ -31,3 +31,4 @@ jobs:
             AWS_ID: ${{ secrets.AWS_ID }}
             AWS_KEY: ${{ secrets.AWS_KEY }}
             BUCKET: ${{ secrets.BUCKET }}
+            KB_ID: ${{ secrets.KB_ID }}
