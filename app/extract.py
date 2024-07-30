@@ -1,13 +1,5 @@
 from bs4 import BeautifulSoup
 import requests
-import re
-from time import sleep
-from urllib.parse import urlparse
-import json
-import os
-import boto3
-from io import BytesIO
-from .s3 import getS3Address
 from dotenv import load_dotenv
 load_dotenv()
 

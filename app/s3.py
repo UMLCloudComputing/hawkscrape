@@ -4,12 +4,12 @@ import re
 from dotenv import load_dotenv
 load_dotenv()
 
-AWS_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_ID = os.getenv("AWS_ID")
+AWS_KEY = os.getenv("AWS_KEY")
 
 def getS3Address(kbID: str) -> str:
-    s3 = boto3.client('s3', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY)
-    kb = boto3.client('bedrock-agent', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY)
+    s3 = boto3.client('s3', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY, region_name='us-east-1')
+    kb = boto3.client('bedrock-agent', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY, region_name='us-east-1')
 
     data_src_list = kb.list_data_sources(knowledgeBaseId=kbID, maxResults=123)['dataSourceSummaries']
     id = data_src_list[0]['dataSourceId']
