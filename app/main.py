@@ -29,26 +29,66 @@ def url_to_filename(url):
     filename = (filename[:252] + '...') if len(filename) > 255 else filename
     return filename
 
+def extract_tags(soup, pattern):
+    print("Extracting tags")
+    tags_dict = {}
+    loc_text = None
+
+    for element in soup.find_all(['loc', 'lastmod']):
+        if element.name == 'loc' and pattern.search(element.get_text()):
+            loc_text = element.get_text()
+        elif element.name == 'lastmod' and loc_text:
+            tags_dict[loc_text] = element.get_text()
+            loc_text = None
+
+    print("Tags extracted and dictionary created")
+    return tags_dict
+
 def main(substrings: list) -> None: 
     
-    origin_url = 'https://www.uml.edu/sitemap.xml' 
-
-    # Call get method to request that page
-    page = requests.get(origin_url)
-
-    # Parse using XML 
-    soup = BeautifulSoup(page.content, features = "xml")
-
-    # Compile a regular expression pattern to match any of the substrings. Read more about RegEx expressions if interested.
-    pattern = re.compile('|'.join(substrings))
-
-    # Find all <loc> tags that contain any of the substrings using the compiled pattern 
-    filtered_loc_tags = soup.find_all('loc', string=pattern)
-
-    for sub_url in filtered_loc_tags:
-        # Convert html into text
-        sub_url = sub_url.get_text() 
+    s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ID"), aws_secret_access_key=os.getenv("AWS_KEY"), region_name='us-east-1')
     
+    try:
+        sitemap = s3.get_object(Bucket=BUCKET, Key="sitemap.xml")['Body'].read()
+        local_soup = BeautifulSoup(sitemap, features="lxml")
+        s3_tags = extract_tags(local_soup, re.compile('|'.join(substrings)))
+
+        origin_url = 'https://www.uml.edu/sitemap.xml' 
+
+        page = requests.get(origin_url)
+
+        print("Successfully downloaded webpage")
+
+        remote_soup = BeautifulSoup(page.content, features = "lxml")
+
+        print("Finished parsing with BeautifulSoup.")
+        remote_tags = extract_tags(remote_soup, re.compile('|'.join(substrings)))
+
+        urls = {
+            url: remote_tags[url] 
+            for url in remote_tags 
+            if url not in s3_tags or remote_tags[url] != s3_tags[url]
+        }
+
+    except Exception as e:
+        s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=BytesIO(requests.get('https://www.uml.edu/sitemap.xml').content))
+        origin_url = 'https://www.uml.edu/sitemap.xml' 
+
+        # Call get method to request that page
+        page = requests.get(origin_url)
+
+        # Parse using XML 
+        soup = BeautifulSoup(page.content, features = "xml")
+
+        # Compile a regular expression pattern to match any of the substrings. Read more about RegEx expressions if interested.
+        pattern = re.compile('|'.join(substrings))
+
+        # Find all <loc> tags that contain any of the substrings using the compiled pattern 
+        filtered_loc_tags = soup.find_all('loc', string=pattern)
+
+        urls = [sub_url.get_text() for sub_url in filtered_loc_tags]
+
+    for sub_url in urls:
         # Note: Will override former "soup" variable contents (uml.edu/sitemap.xml). Not an issue though because we already got everything we needed from uml.edu/sitemap.xml.
         page = requests.get(sub_url) 
 
@@ -91,9 +131,10 @@ def main(substrings: list) -> None:
         # Wait a bit before it requests the next URL in the loop
         print(f"Finished processing {sub_url}")
         sleep(0.5)
+    # s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=BytesIO(requests.get('https://www.uml.edu/sitemap.xml').content))
 
 def ingest_data(knowledge_base):
-    client = boto3.client('bedrock-agent', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY)
+    client = boto3.client('bedrock-agent', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY, region_name='us-east-1')
     data_src_list = client.list_data_sources(knowledgeBaseId=knowledge_base, maxResults=123)['dataSourceSummaries']
     id = data_src_list[0]['dataSourceId']
     response = client.start_ingestion_job(
@@ -103,5 +144,5 @@ def ingest_data(knowledge_base):
 
 if __name__ == "__main__":
     main(["/thesolutioncenter/"])
-    ingest_data(os.getenv("KB_ID"))
+    # ingest_data(os.getenv("KB_ID"))
 

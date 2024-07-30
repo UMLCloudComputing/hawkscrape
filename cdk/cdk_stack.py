@@ -3,7 +3,8 @@ from aws_cdk import (
     Stack,
     aws_lambda as _lambda,
     aws_apigateway as apigateway,
-    aws_s3 as s3
+    aws_s3 as s3,
+    CfnOutput
 )
 from constructs import Construct
 from dotenv import load_dotenv
@@ -21,25 +22,32 @@ class CdkStack(Stack):
             bucket_name=f"xmlbucket{construct_id.lower()}" # Provide a bucket name here
         )
 
-        dockerFunc = _lambda.DockerImageFunction(
-            scope=self,
-            id=f"ID{construct_id}",
-            function_name=construct_id,
-            environment= {
-                "BUCKET" : bucket.bucket_name,
-                "AWS_ID": os.getenv('AWS_ACCESS_KEY_ID'),
-                "AWS_KEY": os.getenv('AWS_SECRET_ACCESS_KEY'),
-                "KB_ID": os.getenv('KB_ID'),
-            },            
-            code=_lambda.DockerImageCode.from_image_asset(
-                directory="src"
-            ),
-            timeout=Duration.seconds(900)
-        )
+        self.bucket = bucket.bucket_name
 
-        api = apigateway.LambdaRestApi(self, f"API{construct_id}",
-            handler=dockerFunc,
-            proxy=True,
-        )
+        CfnOutput(self, "BucketNameOutput",
+                       value=self.bucket,
+                       description="The name of the S3 bucket",
+                       export_name="BucketName")
+
+        # dockerFunc = _lambda.DockerImageFunction(
+        #     scope=self,
+        #     id=f"ID{construct_id}",
+        #     function_name=construct_id,
+        #     environment= {
+        #         "BUCKET" : bucket.bucket_name,
+        #         "AWS_ID": os.getenv('AWS_ID'),
+        #         "AWS_KEY": os.getenv('AWS_KEY'),
+        #         "KB_ID": os.getenv('KB_ID'),
+        #     },            
+        #     code=_lambda.DockerImageCode.from_image_asset(
+        #         directory="src"
+        #     ),
+        #     timeout=Duration.seconds(900)
+        # )
+
+        # api = apigateway.LambdaRestApi(self, f"API{construct_id}",
+        #     handler=dockerFunc,
+        #     proxy=True,
+        # )
 
         
