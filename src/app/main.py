@@ -12,8 +12,8 @@ from s3 import getS3Address
 from dotenv import load_dotenv
 load_dotenv()
 
-AWS_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_ID = os.getenv("AWS_ID")
+AWS_KEY = os.getenv("AWS_KEY")
 
 def handler(event, context):
     main(["/thesolutioncenter/"])
@@ -88,7 +88,8 @@ def main(substrings: list) -> None:
         #     s3.put_object(Bucket=bucket_name, Key=f"{csv_filename}.metadata.json", Body=BytesIO(json_content))
 
         # Wait a bit before it requests the next URL in the loop
-        sleep(1)
+        print(f"Finished processing {sub_url}")
+        sleep(0.5)
 
 def ingest_data(knowledge_base):
     client = boto3.client('bedrock-agent', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY)

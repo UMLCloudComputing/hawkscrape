@@ -2,6 +2,7 @@ from aws_cdk import (
     Duration,
     Stack,
     aws_lambda as _lambda,
+    aws_apigateway as apigateway,
 )
 from constructs import Construct
 from dotenv import load_dotenv
@@ -26,4 +27,9 @@ class CdkStack(Stack):
                 directory="src"
             ),
             timeout=Duration.seconds(900)
+        )
+
+        api = apigateway.LambdaRestApi(self, f"API{construct_id}",
+            handler=dockerFunc,
+            proxy=True,
         )
