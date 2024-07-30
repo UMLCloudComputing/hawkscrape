@@ -14,6 +14,7 @@ load_dotenv()
 
 AWS_ID = os.getenv("AWS_ID")
 AWS_KEY = os.getenv("AWS_KEY")
+BUCKET = os.getenv("BUCKET")
 
 def handler(event, context):
     main(["/thesolutioncenter/"])
