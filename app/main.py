@@ -16,6 +16,8 @@ AWS_ID = os.getenv("AWS_ID")
 AWS_KEY = os.getenv("AWS_KEY")
 BUCKET = os.getenv("BUCKET")
 
+print(BUCKET)
+
 def handler(event, context):
     main(["/thesolutioncenter/"])
     ingest_data(os.getenv("KB_ID"))
