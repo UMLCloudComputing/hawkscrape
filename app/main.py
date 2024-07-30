@@ -133,7 +133,7 @@ def main(substrings: list) -> None:
         # Wait a bit before it requests the next URL in the loop
         print(f"Finished processing {sub_url}")
         sleep(0.5)
-    # s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=BytesIO(requests.get('https://www.uml.edu/sitemap.xml').content))
+    s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=BytesIO(requests.get('https://www.uml.edu/sitemap.xml').content))
 
 def ingest_data(knowledge_base):
     client = boto3.client('bedrock-agent', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY, region_name='us-east-1')
