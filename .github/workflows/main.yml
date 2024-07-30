@@ -44,7 +44,7 @@ jobs:
 
       - name: Update Knowledge Base
         run: |
-            echo BUCKET=$(jq -r '.HawkScrapeTest.BucketNameOutput' ./cdk-outputs.json)
+            echo "BUCKET=$(jq -r '.HawkScrapeTest.BucketNameOutput' ./cdk-outputs.json)" >> $GITHUB_ENV
             python app/main.py
         env:
             AWS_ID: ${{ secrets.AWS_ID }}
