@@ -29,15 +29,15 @@ jobs:
         run: cdk bootstrap
         env:
             APP_NAME: ${{ secrets.APP_NAME }}
-            AWS_ID: ${{ secrets.AWS_ID }}
-            AWS_KEY: ${{ secrets.AWS_KEY }}
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ID }}
+            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_KEY }}
 
       - name: Deploy CDK Stack
         run: cdk deploy --require-approval never --outputs-file ./cdk-outputs.json
         env:
             APP_NAME: ${{ secrets.APP_NAME }}
-            AWS_ID: ${{ secrets.AWS_ID }}
-            AWS_KEY: ${{ secrets.AWS_KEY }}
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ID }}
+            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_KEY }}
 
       - name: Install jq
         run: sudo apt update && sudo apt install -y jq
