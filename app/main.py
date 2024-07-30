@@ -146,5 +146,5 @@ def ingest_data(knowledge_base):
 
 if __name__ == "__main__":
     main(["/thesolutioncenter/"])
-    # ingest_data(os.getenv("KB_ID"))
+    ingest_data(os.getenv("KB_ID"))
 
