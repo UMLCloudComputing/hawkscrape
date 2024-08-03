@@ -26,8 +26,7 @@ class CdkStack(Stack):
 
         CfnOutput(self, "BucketNameOutput",
                        value=self.bucket,
-                       description="The name of the S3 bucket",
-                       export_name="BucketName")
+                       description="The name of the S3 bucket",)
 
         # dockerFunc = _lambda.DockerImageFunction(
         #     scope=self,
