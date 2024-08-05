@@ -18,10 +18,6 @@ BUCKET = os.getenv("BUCKET")
 
 print(BUCKET)
 
-def handler(event, context):
-    main(["/thesolutioncenter/"])
-    ingest_data(os.getenv("KB_ID"))
-
 def url_to_filename(url):
     parsed_url = urlparse(url)
     netloc = parsed_url.netloc
@@ -145,6 +141,6 @@ def ingest_data(knowledge_base):
     )
 
 if __name__ == "__main__":
-    main(["/thesolutioncenter/"])
+    main(["/thesolutioncenter/", "/catalog/undergraduate"])
     ingest_data(os.getenv("KB_ID"))
 
