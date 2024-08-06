@@ -13,7 +13,8 @@ def extract(soup):
         ("div", "layout-header__quick-links"),
         ("div", "l-supplemental-content"),
         ("div", "l-page__nav"),
-        ("div", "c-browser-support-message")
+        ("div", "c-browser-support-message"),
+        ("div", "sidebar__inside"),
     ]
 
     # Decompose elements based on selectors
@@ -58,4 +59,4 @@ def test(url):
     print(parsed_text)
 
 if __name__ == "__main__":
-    test("https://www.uml.edu/student-services/reslife/housing/housing-food-rates.aspx")
+    test("https://www.uml.edu/catalog/undergraduate/sciences/departments/computer-science/degree-pathways/dp-cs-data-science-2020.aspx")
