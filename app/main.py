@@ -109,8 +109,6 @@ def main(substrings: list) -> None:
 
         json_content = json.dumps(metadata).encode('utf-8')
 
-        # File writing logic
-
         # Initialize S3 Bucket. Then get the S3 bucket connected to the knowledge base
         s3 = boto3.client('s3', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY)
         bucket_name = getS3Address(os.getenv("KB_ID"))
@@ -120,11 +118,6 @@ def main(substrings: list) -> None:
 
         # Put metadata file into bucket
         s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
-
-        # for index, csv_content in enumerate(parsed_csv):
-        #     csv_filename = f"{url_to_filename(sub_url)}_{index}.csv"
-        #     s3.put_object(Bucket=bucket_name, Key=csv_filename, Body=BytesIO(csv_content.encode('utf-8')))
-        #     s3.put_object(Bucket=bucket_name, Key=f"{csv_filename}.metadata.json", Body=BytesIO(json_content))
 
         # Wait a bit before it requests the next URL in the loop
         print(f"Finished processing {sub_url}")
