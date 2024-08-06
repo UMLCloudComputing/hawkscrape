@@ -15,6 +15,7 @@ def extract(soup):
         ("div", "l-page__nav"),
         ("div", "c-browser-support-message"),
         ("div", "sidebar__inside"),
+        ("div", "page__supplemental apply-max-width components")
     ]
 
     # Decompose elements based on selectors
