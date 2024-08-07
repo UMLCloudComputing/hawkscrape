@@ -37,13 +37,21 @@ def extract_tags(soup, pattern):
     loc_text = None
 
     for element in soup.find_all(['loc', 'lastmod']):
-        if element.name == 'loc' and pattern.search(element.get_text()):
-            loc_text = element.get_text()
+        tags_dict[element.get_text()]="5"
+       
+    ''' if pattern is not None and element.name == "loc":
+            if pattern.search(element.get_text()):
+                loc_text = element.get_text()
+        elif pattern is None and element.name == "loc":
+            if element.name == 'loc':
+                loc_text = element.get_text()
         elif element.name == 'lastmod' and loc_text:
             tags_dict[loc_text] = element.get_text()
-            loc_text = None
+            loc_text = None'''
+       
 
     print("Tags extracted and dictionary created")
+
     return tags_dict
 
 def main(substrings: list) -> None: 
@@ -59,10 +67,13 @@ def main(substrings: list) -> None:
     remote_soup = BeautifulSoup(page.content, features = "lxml")
 
     print("Finished parsing with BeautifulSoup.")
-    remote_tags = extract_tags(remote_soup, re.compile('|'.join(substrings)))
     # The "try" will fully execute if there is a sitemap.xml file in the specified bucket (BUCKET env variable)
     sitemap_file_to_create = ""
+
+    remote_tags = ""
     try:
+
+
         sitemap = s3.get_object(Bucket=BUCKET, Key="sitemap.xml")['Body'].read()
         local_soup = BeautifulSoup(sitemap, features="lxml")
         s3_tags = extract_tags(local_soup, re.compile('|'.join(substrings)))
@@ -80,6 +91,8 @@ def main(substrings: list) -> None:
                 urls_whose_content_doesnt_need_to_be_updated += f"<url>\n  <loc>{url}</loc>\n  <lastmod>{remote_tags[url]}</lastmod> \n</url>"
 
         sitemap_file_to_create+=urls_whose_content_doesnt_need_to_be_updated
+
+        remote_tags = extract_tags(remote_soup, re.compile('|'.join(substrings)))
     # If the "try" doesn't fully execute, meaning that there is no sitemap.xml file in the specified bucket, then the below "exception" will execute
     except Exception as e:
         origin_url = 'https://www.uml.edu/sitemap.xml' 
@@ -98,6 +111,8 @@ def main(substrings: list) -> None:
 
         urls = [sub_url.get_text() for sub_url in filtered_loc_tags]
 
+        remote_tags = extract_tags(remote_soup, None)
+       
     try:
         for sub_url in urls:
             # Note: Will override former "soup" variable contents (uml.edu/sitemap.xml). Not an issue though because we already got everything we needed from uml.edu/sitemap.xml.
@@ -129,20 +144,21 @@ def main(substrings: list) -> None:
             bucket_name = getS3Address(os.getenv("KB_ID"))
             
             # Put parsed file into bucket
-            s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
+          #  s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
 
             # Put metadata file into bucket
-            s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
+            #s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
 
            
-            print(f"Finished processing {sub_url}")
-            
+            #print(f"Finished processing {sub_url}")
+           # print(remote_tags.keys())
             sitemap_file_to_create += (
     f"  <url>\n"
     f"    <loc>{sub_url}</loc>\n"
     f"    <lastmod>{remote_tags[sub_url]}</lastmod>\n"
     f"  </url>\n"
 )
+            print(remote_tags[sub_url])
            
             sleep(0.5)
     except KeyboardInterrupt:
