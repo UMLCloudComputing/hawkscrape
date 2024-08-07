@@ -49,31 +49,39 @@ def extract_tags(soup, pattern):
 def main(substrings: list) -> None: 
     
     s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ID"), aws_secret_access_key=os.getenv("AWS_KEY"), region_name='us-east-1')
-    
+
+    origin_url = 'https://www.uml.edu/sitemap.xml' 
+
+    page = requests.get(origin_url)
+
+    print("Successfully downloaded webpage")
+
+    remote_soup = BeautifulSoup(page.content, features = "lxml")
+
+    print("Finished parsing with BeautifulSoup.")
+    remote_tags = extract_tags(remote_soup, re.compile('|'.join(substrings)))
+    # The "try" will fully execute if there is a sitemap.xml file in the specified bucket (BUCKET env variable)
+    sitemap_file_to_create = ""
     try:
         sitemap = s3.get_object(Bucket=BUCKET, Key="sitemap.xml")['Body'].read()
         local_soup = BeautifulSoup(sitemap, features="lxml")
         s3_tags = extract_tags(local_soup, re.compile('|'.join(substrings)))
 
-        origin_url = 'https://www.uml.edu/sitemap.xml' 
-
-        page = requests.get(origin_url)
-
-        print("Successfully downloaded webpage")
-
-        remote_soup = BeautifulSoup(page.content, features = "lxml")
-
-        print("Finished parsing with BeautifulSoup.")
-        remote_tags = extract_tags(remote_soup, re.compile('|'.join(substrings)))
+        
 
         urls = {
             url: remote_tags[url] 
             for url in remote_tags 
             if url not in s3_tags or remote_tags[url] != s3_tags[url]
         }
+        urls_whose_content_doesnt_need_to_be_updated = ""
+        for url in remote_tags:
+            if url not in urls:
+                urls_whose_content_doesnt_need_to_be_updated += f"<url>\n  <loc>{url}</loc>\n  <lastmod>{remote_tags[url]}</lastmod> \n</url>"
 
+        sitemap_file_to_create+=urls_whose_content_doesnt_need_to_be_updated
+    # If the "try" doesn't fully execute, meaning that there is no sitemap.xml file in the specified bucket, then the below "exception" will execute
     except Exception as e:
-        s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=BytesIO(requests.get('https://www.uml.edu/sitemap.xml').content))
         origin_url = 'https://www.uml.edu/sitemap.xml' 
 
         # Call get method to request that page
@@ -90,50 +98,57 @@ def main(substrings: list) -> None:
 
         urls = [sub_url.get_text() for sub_url in filtered_loc_tags]
 
-    for sub_url in urls:
-        # Note: Will override former "soup" variable contents (uml.edu/sitemap.xml). Not an issue though because we already got everything we needed from uml.edu/sitemap.xml.
-        page = requests.get(sub_url) 
+    try:
+        for sub_url in urls:
+            # Note: Will override former "soup" variable contents (uml.edu/sitemap.xml). Not an issue though because we already got everything we needed from uml.edu/sitemap.xml.
+            page = requests.get(sub_url) 
 
-        # Parse using HTML
-        soup = BeautifulSoup(page.content, "html.parser") 
+            # Parse using HTML
+            soup = BeautifulSoup(page.content, "html.parser") 
 
-        parsed_text = extract(soup)
+            parsed_text = extract(soup)
 
-        # parsed_csv = getTable(sub_url)
+            # parsed_csv = getTable(sub_url)
 
-        filename_base = url_to_filename(sub_url) + ".md"
-        metadata_filename = f"{filename_base}.metadata.json"
+            filename_base = url_to_filename(sub_url) + ".md"
+            metadata_filename = f"{filename_base}.metadata.json"
 
-        # Metadata dictionary
-        metadata = {
-            "metadataAttributes": {
-                "url": sub_url
+            # Metadata dictionary
+            metadata = {
+                "metadataAttributes": {
+                    "url": sub_url
+                }
             }
-        }
 
-        json_content = json.dumps(metadata).encode('utf-8')
+            json_content = json.dumps(metadata).encode('utf-8')
 
-        # File writing logic
+            # File writing logic
 
-        # Initialize S3 Bucket. Then get the S3 bucket connected to the knowledge base
-        s3 = boto3.client('s3', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY)
-        bucket_name = getS3Address(os.getenv("KB_ID"))
+            # Initialize S3 Bucket. Then get the S3 bucket connected to the knowledge base
+            s3 = boto3.client('s3', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY)
+            bucket_name = getS3Address(os.getenv("KB_ID"))
+            
+            # Put parsed file into bucket
+            s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
 
-        # Put parsed file into bucket
-        s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
+            # Put metadata file into bucket
+            s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
 
-        # Put metadata file into bucket
-        s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
-
-        # for index, csv_content in enumerate(parsed_csv):
-        #     csv_filename = f"{url_to_filename(sub_url)}_{index}.csv"
-        #     s3.put_object(Bucket=bucket_name, Key=csv_filename, Body=BytesIO(csv_content.encode('utf-8')))
-        #     s3.put_object(Bucket=bucket_name, Key=f"{csv_filename}.metadata.json", Body=BytesIO(json_content))
-
-        # Wait a bit before it requests the next URL in the loop
-        print(f"Finished processing {sub_url}")
-        sleep(0.5)
-    s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=BytesIO(requests.get('https://www.uml.edu/sitemap.xml').content))
+           
+            print(f"Finished processing {sub_url}")
+            
+            sitemap_file_to_create += (
+    f"  <url>\n"
+    f"    <loc>{sub_url}</loc>\n"
+    f"    <lastmod>{remote_tags[sub_url]}</lastmod>\n"
+    f"  </url>\n"
+)
+           
+            sleep(0.5)
+    except KeyboardInterrupt:
+            s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=sitemap_file_to_create)
+            ingest_data(os.getenv("KB_ID"))      
+    s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=sitemap_file_to_create)   # Executes at the end -- meaning, once every new or updated link page has been uploaded to the knowledge-base-connected s3 bucket.
 
 def ingest_data(knowledge_base):
     client = boto3.client('bedrock-agent', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY, region_name='us-east-1')
