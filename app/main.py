@@ -37,21 +37,13 @@ def extract_tags(soup, pattern):
     loc_text = None
 
     for element in soup.find_all(['loc', 'lastmod']):
-        tags_dict[element.get_text()]="5"
-       
-    ''' if pattern is not None and element.name == "loc":
-            if pattern.search(element.get_text()):
-                loc_text = element.get_text()
-        elif pattern is None and element.name == "loc":
-            if element.name == 'loc':
-                loc_text = element.get_text()
+        if element.name == 'loc' and pattern.search(element.get_text()):
+            loc_text = element.get_text()
         elif element.name == 'lastmod' and loc_text:
             tags_dict[loc_text] = element.get_text()
-            loc_text = None'''
-       
+            loc_text = None
 
     print("Tags extracted and dictionary created")
-
     return tags_dict
 
 def main(substrings: list) -> None: 
@@ -72,7 +64,7 @@ def main(substrings: list) -> None:
 
     remote_tags = ""
     try:
-
+        remote_tags = extract_tags(remote_soup, re.compile('|'.join(substrings)))
 
         sitemap = s3.get_object(Bucket=BUCKET, Key="sitemap.xml")['Body'].read()
         local_soup = BeautifulSoup(sitemap, features="lxml")
@@ -92,26 +84,13 @@ def main(substrings: list) -> None:
 
         sitemap_file_to_create+=urls_whose_content_doesnt_need_to_be_updated
 
-        remote_tags = extract_tags(remote_soup, re.compile('|'.join(substrings)))
+       
+
     # If the "try" doesn't fully execute, meaning that there is no sitemap.xml file in the specified bucket, then the below "exception" will execute
     except Exception as e:
-        origin_url = 'https://www.uml.edu/sitemap.xml' 
-
-        # Call get method to request that page
-        page = requests.get(origin_url)
-
-        # Parse using XML 
-        soup = BeautifulSoup(page.content, features = "xml")
-
-        # Compile a regular expression pattern to match any of the substrings. Read more about RegEx expressions if interested.
-        pattern = re.compile('|'.join(substrings))
-
-        # Find all <loc> tags that contain any of the substrings using the compiled pattern 
-        filtered_loc_tags = soup.find_all('loc', string=pattern)
-
-        urls = [sub_url.get_text() for sub_url in filtered_loc_tags]
-
-        remote_tags = extract_tags(remote_soup, None)
+        
+        urls = extract_tags(remote_soup, re.compile('|'.join(substrings))).keys()
+        remote_tags = extract_tags(remote_soup, re.compile('|'.join(substrings)))
        
     try:
         for sub_url in urls:
@@ -144,14 +123,15 @@ def main(substrings: list) -> None:
             bucket_name = getS3Address(os.getenv("KB_ID"))
             
             # Put parsed file into bucket
-          #  s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
+            s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
 
             # Put metadata file into bucket
-            #s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
+            s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
 
            
             #print(f"Finished processing {sub_url}")
-           # print(remote_tags.keys())
+            print(remote_tags[sub_url])
+           
             sitemap_file_to_create += (
     f"  <url>\n"
     f"    <loc>{sub_url}</loc>\n"
