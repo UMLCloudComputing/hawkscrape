@@ -34,10 +34,12 @@ def extract_tags(soup, substrings, usePattern):
     print("Extracting tags")
     tags_dict = {}
     loc_text = None
-
+    # Searches using <url> tag
     for element in soup.find_all(lambda tag: tag.name == 'url' and any(re.search(substring, subtag.text) for subtag in tag.find_all('loc') for substring in substrings)):
         loc_tag = element.find('loc').get_text()
         lastmod_tag = element.find('lastmod')
+
+        # Checks if lastmod tag exists within current url tag. If it does not exist, set lastmod_tag to None. If it exists, set lastmod_tag to its content
         if lastmod_tag is None:
             lastmod_tag = None
         else:
@@ -48,7 +50,7 @@ def extract_tags(soup, substrings, usePattern):
 
 def main(substrings: list) -> None: 
     
-   # s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ID"), aws_secret_access_key=os.getenv("AWS_KEY"), region_name='us-east-1')
+    #s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ID"), aws_secret_access_key=os.getenv("AWS_KEY"), region_name='us-east-1')
 
     origin_url = 'https://www.uml.edu/sitemap.xml' 
 
@@ -66,7 +68,7 @@ def main(substrings: list) -> None:
  
     remote_tags = ""
 
-     # The "try" will fully execute if there is a sitemap.xml file in the specified bucket (BUCKET env variable)
+    # The "try" will fully execute if there is a sitemap.xml file in the specified bucket (BUCKET env variable)
     try:
 
         sitemap = s3.get_object(Bucket=BUCKET, Key="sitemap.xml")['Body'].read()
@@ -134,9 +136,6 @@ def main(substrings: list) -> None:
             s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
 
            
-            #print(f"Finished processing {sub_url}")
-          
-           
             sitemap_file_to_create += (
     f"  <url>\n"
     f"    <loc>{sub_url}</loc>\n"
@@ -148,7 +147,6 @@ def main(substrings: list) -> None:
             sleep(0.5)
     except KeyboardInterrupt:
             s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=sitemap_file_to_create)
-            ingest_data(os.getenv("KB_ID"))
     s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=sitemap_file_to_create)   # Executes at the end -- meaning, once every new or updated link page has been uploaded to the knowledge-base-connected s3 bucket.
 
 def ingest_data(knowledge_base):
@@ -161,6 +159,6 @@ def ingest_data(knowledge_base):
     )
 
 if __name__ == "__main__":
-    main(["thesolutioncenter"])
+    main(["tuition"])
     ingest_data(os.getenv("KB_ID"))
 
