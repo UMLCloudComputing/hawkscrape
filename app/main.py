@@ -36,8 +36,8 @@ def extract_tags(soup, substrings, usePattern):
     loc_text = None
 
     # Logic for usePattern. If function call does not want to use the substring pattern, then set local variable of substrings (which is passed as an argument) to None so that no re.search filtering occurs
-   # if usePattern == False:
-        #substrings = None
+    if usePattern == False:
+        substrings = None
 
         # Searches using <url> tag
     for element in soup.find_all(lambda tag: tag.name == 'url' and any(re.search(substring, subtag.text) for subtag in tag.find_all('loc') for substring in substrings)):
@@ -164,6 +164,6 @@ def ingest_data(knowledge_base):
     )
 
 if __name__ == "__main__":
-    main(["tuition"])
+    main(["thesolutioncenter"])
     ingest_data(os.getenv("KB_ID"))
 
