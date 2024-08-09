@@ -34,7 +34,12 @@ def extract_tags(soup, substrings, usePattern):
     print("Extracting tags")
     tags_dict = {}
     loc_text = None
-    # Searches using <url> tag
+
+    # Logic for usePattern. If function call does not want to use the substring pattern, then set local variable of substrings (which is passed as an argument) to None so that no re.search filtering occurs
+   # if usePattern == False:
+        #substrings = None
+
+        # Searches using <url> tag
     for element in soup.find_all(lambda tag: tag.name == 'url' and any(re.search(substring, subtag.text) for subtag in tag.find_all('loc') for substring in substrings)):
         loc_tag = element.find('loc').get_text()
         lastmod_tag = element.find('lastmod')
@@ -50,7 +55,7 @@ def extract_tags(soup, substrings, usePattern):
 
 def main(substrings: list) -> None: 
     
-    #s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ID"), aws_secret_access_key=os.getenv("AWS_KEY"), region_name='us-east-1')
+    s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ID"), aws_secret_access_key=os.getenv("AWS_KEY"), region_name='us-east-1')
 
     origin_url = 'https://www.uml.edu/sitemap.xml' 
 
@@ -126,19 +131,19 @@ def main(substrings: list) -> None:
             # File writing logic
 
             # Initialize S3 Bucket. Then get the S3 bucket connected to the knowledge base
-            s3 = boto3.client('s3', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY)
+           
             bucket_name = getS3Address(os.getenv("KB_ID"))
             
             # Put parsed file into bucket
-            s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
+            #s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
 
             # Put metadata file into bucket
-            s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
+            #s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
 
            
             sitemap_file_to_create += (
     f"  <url>\n"
-    f"    <loc>{sub_url}</loc>\n"
+f"    <loc>{sub_url}</loc>\n"
     f"    <lastmod>{remote_tags[sub_url]}</lastmod>\n"
     f"  </url>\n"
 )
