@@ -37,10 +37,12 @@ def extract_tags(soup, substrings, usePattern):
 
     # Logic for usePattern. If function call does not want to use the substring pattern, then set local variable of substrings (which is passed as an argument) to None so that no re.search filtering occurs
     if usePattern == False:
-        substrings = None
+        substrings = [None]
 
         # Searches using <url> tag
-    for element in soup.find_all(lambda tag: tag.name == 'url' and any(re.search(substring, subtag.text) for subtag in tag.find_all('loc') for substring in substrings)):
+    for element in soup.find_all(lambda tag: tag.name == 'url' and any(
+            substring is None or re.search(substring, tag.find('loc').get_text()) 
+            for substring in substrings)):
         loc_tag = element.find('loc').get_text()
         lastmod_tag = element.find('lastmod')
 
@@ -49,13 +51,13 @@ def extract_tags(soup, substrings, usePattern):
             lastmod_tag = None
         else:
             lastmod_tag = lastmod_tag.get_text()
-        tags_dict[loc_tag] = lastmod_tag
+        tags_dict[loc_tag] = lastmod_tag    
 
     return tags_dict
 
 def main(substrings: list) -> None: 
     
-    s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ID"), aws_secret_access_key=os.getenv("AWS_KEY"), region_name='us-east-1')
+    #s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ID"), aws_secret_access_key=os.getenv("AWS_KEY"), region_name='us-east-1')
 
     origin_url = 'https://www.uml.edu/sitemap.xml' 
 
@@ -71,16 +73,15 @@ def main(substrings: list) -> None:
     sitemap_file_to_create = ""
 
  
-    remote_tags = ""
-
+    remote_tags = extract_tags(remote_soup, substrings, True)
+    s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ID"), aws_secret_access_key=os.getenv("AWS_KEY"), region_name='us-east-1')
     # The "try" will fully execute if there is a sitemap.xml file in the specified bucket (BUCKET env variable)
     try:
-
+        
         sitemap = s3.get_object(Bucket=BUCKET, Key="sitemap.xml")['Body'].read()
         local_soup = BeautifulSoup(sitemap, features="lxml")
         s3_tags = extract_tags(local_soup, substrings, False)
 
-      
         # Urls that need to be updated
         urls = {
             url: remote_tags[url] 
@@ -99,8 +100,6 @@ def main(substrings: list) -> None:
 
     # If the "try" doesn't fully execute, meaning that there is no sitemap.xml file in the specified bucket, then the below "exception" will execute
     except Exception as e:
-        
-        remote_tags = extract_tags(remote_soup, substrings, True)
         urls = remote_tags.keys()
 
     try:
@@ -135,10 +134,10 @@ def main(substrings: list) -> None:
             bucket_name = getS3Address(os.getenv("KB_ID"))
             
             # Put parsed file into bucket
-            #s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
+            s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
 
             # Put metadata file into bucket
-            #s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
+            s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
 
            
             sitemap_file_to_create += (
@@ -164,6 +163,6 @@ def ingest_data(knowledge_base):
     )
 
 if __name__ == "__main__":
-    main(["thesolutioncenter"])
+    main(["tuition"])
     ingest_data(os.getenv("KB_ID"))
 
