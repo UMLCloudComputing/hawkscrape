@@ -16,7 +16,6 @@ AWS_ID = os.getenv("AWS_ID")
 AWS_KEY = os.getenv("AWS_KEY")
 BUCKET = os.getenv("BUCKET")
 
-print(BUCKET)
 
 def handler(event, context):
     main(["/thesolutioncenter/"])
@@ -31,109 +30,128 @@ def url_to_filename(url):
     filename = (filename[:252] + '...') if len(filename) > 255 else filename
     return filename
 
-def extract_tags(soup, pattern):
+def extract_tags(soup, substrings, usePattern):
     print("Extracting tags")
     tags_dict = {}
     loc_text = None
 
-    for element in soup.find_all(['loc', 'lastmod']):
-        if element.name == 'loc' and pattern.search(element.get_text()):
-            loc_text = element.get_text()
-        elif element.name == 'lastmod' and loc_text:
-            tags_dict[loc_text] = element.get_text()
-            loc_text = None
+    # Logic for usePattern. If function call does not want to use the substring pattern, then set local variable of substrings (which is passed as an argument) to None so that no re.search filtering occurs
+    if usePattern == False:
+        substrings = [None]
 
-    print("Tags extracted and dictionary created")
+        # Searches using <url> tag
+    for element in soup.find_all(lambda tag: tag.name == 'url' and any(
+            substring is None or re.search(substring, tag.find('loc').get_text()) 
+            for substring in substrings)):
+        loc_tag = element.find('loc').get_text()
+        lastmod_tag = element.find('lastmod')
+
+        # Checks if lastmod tag exists within current url tag. If it does not exist, set lastmod_tag to None. If it exists, set lastmod_tag to its content
+        if lastmod_tag is None:
+            lastmod_tag = None
+        else:
+            lastmod_tag = lastmod_tag.get_text()
+        tags_dict[loc_tag] = lastmod_tag    
+
     return tags_dict
 
 def main(substrings: list) -> None: 
     
+    #s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ID"), aws_secret_access_key=os.getenv("AWS_KEY"), region_name='us-east-1')
+
+    origin_url = 'https://www.uml.edu/sitemap.xml' 
+
+    page = requests.get(origin_url)
+
+    print("Successfully downloaded webpage")
+
+    remote_soup = BeautifulSoup(page.content, features = "lxml")
+
+
+    print("Finished parsing with BeautifulSoup.")
+   
+    sitemap_file_to_create = ""
+
+ 
+    remote_tags = extract_tags(remote_soup, substrings, True)
     s3 = boto3.client('s3', aws_access_key_id=os.getenv("AWS_ID"), aws_secret_access_key=os.getenv("AWS_KEY"), region_name='us-east-1')
-    
+    # The "try" will fully execute if there is a sitemap.xml file in the specified bucket (BUCKET env variable)
     try:
+        
         sitemap = s3.get_object(Bucket=BUCKET, Key="sitemap.xml")['Body'].read()
         local_soup = BeautifulSoup(sitemap, features="lxml")
-        s3_tags = extract_tags(local_soup, re.compile('|'.join(substrings)))
+        s3_tags = extract_tags(local_soup, substrings, False)
 
-        origin_url = 'https://www.uml.edu/sitemap.xml' 
-
-        page = requests.get(origin_url)
-
-        print("Successfully downloaded webpage")
-
-        remote_soup = BeautifulSoup(page.content, features = "lxml")
-
-        print("Finished parsing with BeautifulSoup.")
-        remote_tags = extract_tags(remote_soup, re.compile('|'.join(substrings)))
-
+        # Urls that need to be updated
         urls = {
             url: remote_tags[url] 
             for url in remote_tags 
             if url not in s3_tags or remote_tags[url] != s3_tags[url]
         }
+    
+        urls_whose_content_doesnt_need_to_be_updated = ""
+        for url in s3_tags:
+            if url not in urls:
+                urls_whose_content_doesnt_need_to_be_updated += f"<url>\n  <loc>{url}</loc>\n  <lastmod>{s3_tags[url]}</lastmod> \n</url>"
 
+        sitemap_file_to_create+=urls_whose_content_doesnt_need_to_be_updated
+        
+       
+
+    # If the "try" doesn't fully execute, meaning that there is no sitemap.xml file in the specified bucket, then the below "exception" will execute
     except Exception as e:
-        s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=BytesIO(requests.get('https://www.uml.edu/sitemap.xml').content))
-        origin_url = 'https://www.uml.edu/sitemap.xml' 
+        urls = remote_tags.keys()
 
-        # Call get method to request that page
-        page = requests.get(origin_url)
+    try:
+        #print(remote_tags.keys())
+        for sub_url in urls:
+            # Note: Will override former "soup" variable contents (uml.edu/sitemap.xml). Not an issue though because we already got everything we needed from uml.edu/sitemap.xml.
+            page = requests.get(sub_url) 
 
-        # Parse using XML 
-        soup = BeautifulSoup(page.content, features = "xml")
+            # Parse using HTML
+            soup = BeautifulSoup(page.content, "html.parser") 
 
-        # Compile a regular expression pattern to match any of the substrings. Read more about RegEx expressions if interested.
-        pattern = re.compile('|'.join(substrings))
+            parsed_text = extract(soup)
 
-        # Find all <loc> tags that contain any of the substrings using the compiled pattern 
-        filtered_loc_tags = soup.find_all('loc', string=pattern)
+            # parsed_csv = getTable(sub_url)
 
-        urls = [sub_url.get_text() for sub_url in filtered_loc_tags]
+            filename_base = url_to_filename(sub_url) + ".md"
+            metadata_filename = f"{filename_base}.metadata.json"
 
-    for sub_url in urls:
-        # Note: Will override former "soup" variable contents (uml.edu/sitemap.xml). Not an issue though because we already got everything we needed from uml.edu/sitemap.xml.
-        page = requests.get(sub_url) 
-
-        # Parse using HTML
-        soup = BeautifulSoup(page.content, "html.parser") 
-
-        parsed_text = extract(soup)
-
-        # parsed_csv = getTable(sub_url)
-
-        filename_base = url_to_filename(sub_url) + ".md"
-        metadata_filename = f"{filename_base}.metadata.json"
-
-        # Metadata dictionary
-        metadata = {
-            "metadataAttributes": {
-                "url": sub_url
+            # Metadata dictionary
+            metadata = {
+                "metadataAttributes": {
+                    "url": sub_url
+                }
             }
-        }
 
-        json_content = json.dumps(metadata).encode('utf-8')
+            json_content = json.dumps(metadata).encode('utf-8')
 
-        # File writing logic
+            # File writing logic
 
-        # Initialize S3 Bucket. Then get the S3 bucket connected to the knowledge base
-        s3 = boto3.client('s3', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY)
-        bucket_name = getS3Address(os.getenv("KB_ID"))
+            # Initialize S3 Bucket. Then get the S3 bucket connected to the knowledge base
+           
+            bucket_name = getS3Address(os.getenv("KB_ID"))
+            
+            # Put parsed file into bucket
+            s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
 
-        # Put parsed file into bucket
-        s3.put_object(Bucket=bucket_name, Key=filename_base, Body=parsed_text)
+            # Put metadata file into bucket
+            s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
 
-        # Put metadata file into bucket
-        s3.put_object(Bucket=bucket_name, Key=metadata_filename, Body=BytesIO(json_content))
-
-        # for index, csv_content in enumerate(parsed_csv):
-        #     csv_filename = f"{url_to_filename(sub_url)}_{index}.csv"
-        #     s3.put_object(Bucket=bucket_name, Key=csv_filename, Body=BytesIO(csv_content.encode('utf-8')))
-        #     s3.put_object(Bucket=bucket_name, Key=f"{csv_filename}.metadata.json", Body=BytesIO(json_content))
-
-        # Wait a bit before it requests the next URL in the loop
-        print(f"Finished processing {sub_url}")
-        sleep(0.5)
-    s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=BytesIO(requests.get('https://www.uml.edu/sitemap.xml').content))
+           
+            sitemap_file_to_create += (
+    f"  <url>\n"
+f"    <loc>{sub_url}</loc>\n"
+    f"    <lastmod>{remote_tags[sub_url]}</lastmod>\n"
+    f"  </url>\n"
+)
+           
+           
+            sleep(0.5)
+    except KeyboardInterrupt:
+            s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=sitemap_file_to_create)
+    s3.put_object(Bucket=BUCKET, Key="sitemap.xml", Body=sitemap_file_to_create)   # Executes at the end -- meaning, once every new or updated link page has been uploaded to the knowledge-base-connected s3 bucket.
 
 def ingest_data(knowledge_base):
     client = boto3.client('bedrock-agent', aws_access_key_id=AWS_ID, aws_secret_access_key=AWS_KEY, region_name='us-east-1')
@@ -145,6 +163,6 @@ def ingest_data(knowledge_base):
     )
 
 if __name__ == "__main__":
-    main(["/thesolutioncenter/"])
+    main(["tuition"])
     ingest_data(os.getenv("KB_ID"))
 
